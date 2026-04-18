@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#f5a623">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>EggTrack Pro · الجلفة</title>
+
+<!-- PWA Manifest -->
+<link rel="manifest" href="manifest.json">
+
+<!-- Leaflet CSS + JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :root {
+    --bg: #f5f7fb;
+    --surface: #ffffff;
+    --surface2: #f0f2f8;
+    --card: #ffffff;
+    --accent: #f5a623;
+    --accent2: #e8890b;
+    --green: #2ecc71;
+    --yellow: #f39c12;
+    --red: #e74c3c;
+    --blue: #3498db;
+    --text: #1e293b;
+    --text2: #64748b;
+    --border: rgba(0,0,0,0.08);
+    --shadow: 0 8px 32px rgba(0,0,0,0.1);
+    --radius: 16px;
+    --font: 'Segoe UI', 'Cairo', 'Tahoma', sans-serif;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    user-select: none;
+  }
+
+  #map {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: #e2e8f0;
+  }
+
+  .leaflet-popup-content-wrapper {
+    background: var(--card);
+    color: var(--text);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    padding: 0;
+    overflow: hidden;
+  }
+  .leaflet-popup-tip-container { display: none; }
+  .leaflet-popup-content { margin: 0; width: 260px !important; }
+
+  #topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 1000;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.95) 0%, transparent 100%);
+    pointer-events: none;
+  }
+
+  #logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    pointer-events: all;
+  }
+  #logo .icon {
+    width: 40px; height: 40px;
+    background: var(--accent);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 4px 16px rgba(245,166,35,0.4);
+    color: white;
+  }
+  #logo .title { font-size: 18px; font-weight: 900; color: #0f172a; }
+  #logo .subtitle { font-size: 11px; color: var(--text2); }
+
+  #topbar-actions {
+    display: flex; gap: 8px;
+    pointer-events: all;
+  }
+  .topbtn {
+    width: 40px; height: 40px;
+    background: rgba(255,255,255,0.9);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(10px);
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .topbtn:active { transform: scale(0.92); background: var(--accent); color: white; }
+
+  #statsbar {
+    position: fixed;
+    top: 68px; left: 8px; right: 8px;
+    z-index: 999;
+    display: flex;
+    gap: 6px;
+    pointer-events: none;
+    transition: top 0.25s;
+  }
+
+  .stat-chip {
+    flex: 1;
+    background: rgba(255,255,255,0.92);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 4px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    pointer-events: all;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .stat-chip:active { transform: scale(0.95); }
+  .stat-chip .num { font-size: 18px; font-weight: 900; }
+  .stat-chip .lbl { font-size: 10px; color: var(--text2); }
+  .stat-chip.green .num { color: var(--green); }
+  .stat-chip.yellow .num { color: var(--yellow); }
+  .stat-chip.red .num { color: var(--red); }
+  .stat-chip.blue .num { color: var(--blue); }
+
+  #fab-group {
+    position: fixed;
+    bottom: 24px; left: 16px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .fab {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    transition: all 0.2s;
+    color: white;
+  }
+  .fab:active { transform: scale(0.9); }
+  .fab.main { background: var(--accent); box-shadow: 0 4px 20px rgba(245,166,35,0.5); width: 58px; height: 58px; font-size: 26px; }
+  .fab.loc { background: var(--blue); box-shadow: 0 4px 20px rgba(52,152,219,0.5); }
+  .fab.filter { background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: 18px; }
+
+  #bottom-panel {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 900;
+    background: var(--surface);
+    border-radius: 24px 24px 0 0;
+    border-top: 1px solid var(--border);
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+  }
+  #bottom-panel.open { transform: translateY(0); }
+
+  .panel-handle {
+    width: 40px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 12px auto 0;
+    flex-shrink: 0;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+    flex-shrink: 0;
+  }
+  .panel-title { font-size: 16px; font-weight: 700; }
+  .panel-close {
+    width: 32px; height: 32px;
+    background: var(--surface2);
+    border: none;
+    border-radius: 50%;
+    color: var(--text2);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .panel-content {
+    overflow-y: auto;
+    flex: 1;
+    padding: 0 16px 24px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .form-group { margin-bottom: 14px; }
+  .form-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; display: block; }
+  .form-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-input:focus { border-color: var(--accent); background: #fff; }
+  .form-input::placeholder { color: var(--text2); }
+
+  .form-row { display: flex; gap: 10px; }
+  .form-row .form-group { flex: 1; }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 14px;
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 4px 16px rgba(245,166,35,0.4); }
+  .btn-danger { background: var(--red); color: #fff; box-shadow: 0 4px 16px rgba(231,76,60,0.3); }
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+
+  .popup-card { padding: 16px; }
+  .popup-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .popup-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 8px currentColor; }
+  .popup-name { font-size: 15px; font-weight: 700; flex: 1; }
+  .popup-status { font-size: 11px; padding: 3px 8px; border-radius: 20px; font-weight: 600; }
+  .popup-info { font-size: 12px; color: var(--text2); margin-bottom: 12px; line-height: 1.7; }
+  .popup-info span { color: var(--text); font-weight: 600; }
+  .popup-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pop-btn {
+    padding: 10px 8px; border: none; border-radius: 10px;
+    font-family: var(--font); font-size: 12px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .pop-btn.sell { background: var(--green); color: #fff; grid-column: 1/3; }
+  .pop-btn.call { background: var(--blue); color: #fff; }
+  .pop-btn.edit { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .pop-btn.del { background: rgba(231,76,60,0.1); color: var(--red); border: 1px solid rgba(231,76,60,0.3); }
+  .pop-btn.hist { background: var(--surface2); color: var(--accent); border: 1px solid var(--border); }
+
+  .store-item {
+    display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+    background: var(--surface2); border-radius: 14px; margin-bottom: 8px;
+    cursor: pointer; border: 1px solid var(--border); transition: all 0.2s;
+  }
+  .store-item:active { transform: scale(0.98); border-color: var(--accent); background: #fff; }
+  .store-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .store-info { flex: 1; }
+  .store-name { font-size: 14px; font-weight: 700; }
+  .store-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .store-arrow { color: var(--text2); font-size: 14px; }
+
+  .sale-item {
+    background: var(--surface2); border-radius: 12px; padding: 12px 14px;
+    margin-bottom: 8px; border: 1px solid var(--border);
+  }
+  .sale-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .sale-date { font-size: 12px; color: var(--text2); }
+  .sale-total { font-size: 14px; font-weight: 900; color: var(--accent); }
+  .sale-detail { font-size: 12px; color: var(--text2); }
+  .sale-detail span { color: var(--text); }
+
+  .report-card {
+    background: var(--surface2); border-radius: 14px; padding: 16px;
+    margin-bottom: 10px; border: 1px solid var(--border);
+  }
+  .report-title { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+  .report-value { font-size: 22px; font-weight: 900; color: var(--accent); }
+  .report-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .report-grid .report-card { margin-bottom: 0; }
+
+  .filter-chips {
+    display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px;
+    margin-bottom: 10px; scrollbar-width: none;
+  }
+  .filter-chips::-webkit-scrollbar { display: none; }
+  .chip {
+    flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--text2); font-family: var(--font); font-size: 12px;
+    font-weight: 600; cursor: pointer; transition: all 0.2s;
+  }
+  .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  #overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.3);
+    z-index: 800; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    backdrop-filter: blur(2px);
+  }
+  #overlay.show { opacity: 1; pointer-events: all; }
+
+  #toast {
+    position: fixed; top: 120px; left: 50%; transform: translateX(-50%) translateY(-20px);
+    background: var(--surface); border: 1px solid var(--border); padding: 12px 20px;
+    border-radius: 20px; font-size: 13px; font-weight: 600; z-index: 9999;
+    opacity: 0; transition: all 0.3s; pointer-events: none;
+    backdrop-filter: blur(10px); white-space: nowrap; box-shadow: var(--shadow);
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  #confirm-dialog {
+    position: fixed; inset: 0; z-index: 9998; display: flex;
+    align-items: center; justify-content: center; padding: 20px;
+    background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  #confirm-dialog.show { opacity: 1; pointer-events: all; }
+  .confirm-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 24px; width: 100%; max-width: 320px;
+    text-align: center; box-shadow: var(--shadow);
+  }
+  .confirm-icon { font-size: 40px; margin-bottom: 12px; }
+  .confirm-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .confirm-msg { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
+  .confirm-btns { display: flex; gap: 10px; }
+
+  .sep { height: 1px; background: var(--border); margin: 12px 0; }
+
+  .shelf-options { display: flex; gap: 8px; flex-wrap: wrap; }
+  .shelf-opt {
+    flex: 1; min-width: 60px; padding: 8px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--text2); font-family: var(--font); font-size: 12px;
+    font-weight: 600; cursor: pointer; text-align: center; transition: all 0.2s;
+  }
+  .shelf-opt.selected { border-color: var(--accent); background: rgba(245,166,35,0.1); color: var(--accent); }
+
+  .total-display {
+    background: rgba(245,166,35,0.05); border: 1px solid rgba(245,166,35,0.2);
+    border-radius: 12px; padding: 12px; text-align: center; margin-bottom: 14px;
+  }
+  .total-display .label { font-size: 11px; color: var(--text2); }
+  .total-display .amount { font-size: 24px; font-weight: 900; color: var(--accent); }
+
+  #adding-hint {
+    position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+    background: rgba(245,166,35,0.95); color: #fff; padding: 10px 20px;
+    border-radius: 20px; font-size: 13px; font-weight: 700; z-index: 1000;
+    display: none; box-shadow: 0 4px 16px rgba(245,166,35,0.5);
+  }
+  #adding-hint.show { display: block; }
+
+  .backup-area {
+    background: var(--surface2); border: 1px dashed var(--border);
+    border-radius: 12px; padding: 16px; margin-bottom: 12px;
+    text-align: center; cursor: pointer;
+  }
+  .backup-area:active { border-color: var(--accent); background: #fff; }
+  .backup-icon { font-size: 28px; margin-bottom: 6px; }
+  .backup-title { font-size: 13px; font-weight: 700; }
+  .backup-sub { font-size: 11px; color: var(--text2); }
+
+  #map-loader {
+    position: fixed; inset: 0; background: #f5f7fb; z-index: 500;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 16px; transition: opacity 0.5s;
+  }
+  .loader-logo { font-size: 48px; animation: bounce 1s infinite; }
+  .loader-text { font-size: 16px; font-weight: 700; color: var(--accent); }
+  .loader-sub { font-size: 12px; color: var(--text2); }
+  @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+  .dots-loader { display: flex; gap: 6px; }
+  .dot-l {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+    animation: dotbounce 1.2s infinite;
+  }
+  .dot-l:nth-child(2) { animation-delay: 0.2s; background: var(--yellow); }
+  .dot-l:nth-child(3) { animation-delay: 0.4s; background: var(--green); }
+  @keyframes dotbounce { 0%,80%,100% { transform: scale(0.8); opacity: 0.5; } 40% { transform: scale(1.2); opacity: 1; } }
+
+  select.form-input {
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: left 14px center;
+  }
+
+  #map-search-container {
+    position: fixed;
+    top: 68px; left: 8px; right: 8px;
+    z-index: 1100;
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+  }
+  #map-search-container.active { display: flex; }
+
+  #map-search-bar {
+    display: flex;
+    align-items: center;
+    background: rgba(255,255,255,0.97);
+    border: 1.5px solid var(--accent);
+    border-radius: 16px;
+    padding: 0 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    backdrop-filter: blur(10px);
+    gap: 8px;
+  }
+  #map-search-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: var(--font);
+    font-size: 14px;
+    color: var(--text);
+    padding: 13px 4px;
+    direction: rtl;
+  }
+  #map-search-input::placeholder { color: var(--text2); }
+  #map-search-clear {
+    background: none; border: none; cursor: pointer;
+    font-size: 16px; color: var(--text2); padding: 4px;
+    display: none;
+  }
+  #map-search-clear.show { display: block; }
+
+  #map-search-results {
+    background: rgba(255,255,255,0.97);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    max-height: 280px;
+    overflow-y: auto;
+    display: none;
+  }
+  #map-search-results.show { display: block; }
+
+  .map-result-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .map-result-item:last-child { border-bottom: none; }
+  .map-result-item:active { background: var(--surface2); }
+  .map-result-icon { font-size: 18px; flex-shrink: 0; }
+  .map-result-info { flex: 1; }
+  .map-result-name { font-size: 13px; font-weight: 700; color: var(--text); }
+  .map-result-addr { font-size: 11px; color: var(--text2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  #offline-progress {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 2000;
+    background: rgba(255,255,255,0.97);
+    border-top: 1px solid var(--border);
+    padding: 14px 20px;
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+  }
+  #offline-progress.show { display: flex; }
+  .offline-progress-header { display: flex; align-items: center; justify-content: space-between; }
+  .offline-progress-title { font-size: 13px; font-weight: 700; }
+  .offline-progress-pct { font-size: 13px; font-weight: 900; color: var(--accent); }
+  .offline-bar-track {
+    height: 8px; background: var(--surface2);
+    border-radius: 4px; overflow: hidden;
+  }
+  .offline-bar-fill {
+    height: 100%; background: var(--accent);
+    border-radius: 4px; width: 0%;
+    transition: width 0.3s;
+  }
+  .offline-progress-sub { font-size: 11px; color: var(--text2); text-align: center; }
+
+  /* تحديث الإصدار */
+  #version-badge {
+    position: fixed;
+    bottom: 8px;
+    right: 8px;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    font-size: 9px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    z-index: 999;
+    pointer-events: none;
+    font-family: monospace;
+  }
+</style>
+</head>
+<body>
+
+<div id="map-loader">
+  <div class="loader-logo">🥚</div>
+  <div class="loader-text">EggTrack Pro</div>
+  <div class="loader-sub">نظام إدارة مبيعات البيض · الجلفة</div>
+  <div class="dots-loader">
+    <div class="dot-l"></div>
+    <div class="dot-l"></div>
+    <div class="dot-l"></div>
+  </div>
+</div>
+
+<div id="map"></div>
+
+<div id="topbar">
+  <div id="logo">
+    <div class="icon">🥚</div>
+    <div>
+      <div class="title">EggTrack</div>
+      <div class="subtitle">إدارة مبيعات البيض</div>
+    </div>
+  </div>
+  <div id="topbar-actions">
+    <button class="topbtn" id="map-search-btn" onclick="toggleMapSearch()" title="بحث في الخريطة">🔎</button>
+    <button class="topbtn" onclick="openPanel('reports')" title="تقارير">📊</button>
+    <button class="topbtn" onclick="openPanel('settings')" title="إعدادات">⚙️</button>
+  </div>
+</div>
+
+<div id="map-search-container">
+  <div id="map-search-bar">
+    <span style="font-size:18px;">🔎</span>
+    <input id="map-search-input" type="text" placeholder="ابحث عن مكان... (مثال: مسجد، دائرة الجلفة)" autocomplete="off">
+    <button id="map-search-clear" onclick="clearMapSearch()">✕</button>
+  </div>
+  <div id="map-search-results"></div>
+</div>
+
+<div id="offline-progress">
+  <div class="offline-progress-header">
+    <span class="offline-progress-title">🗺️ جاري تحميل خريطة الجلفة...</span>
+    <span class="offline-progress-pct" id="offline-pct">0%</span>
+  </div>
+  <div class="offline-bar-track"><div class="offline-bar-fill" id="offline-bar"></div></div>
+  <div class="offline-progress-sub" id="offline-sub">جاري التجهيز...</div>
+</div>
+
+<div id="statsbar">
+  <div class="stat-chip green" onclick="filterStores('green')">
+    <div class="num" id="stat-green">0</div>
+    <div class="lbl">✅ اليوم</div>
+  </div>
+  <div class="stat-chip yellow" onclick="filterStores('yellow')">
+    <div class="num" id="stat-yellow">0</div>
+    <div class="lbl">⚠️ قريبًا</div>
+  </div>
+  <div class="stat-chip red" onclick="filterStores('red')">
+    <div class="num" id="stat-red">0</div>
+    <div class="lbl">🔴 يحتاج</div>
+  </div>
+  <div class="stat-chip blue" onclick="filterStores('all')">
+    <div class="num" id="stat-total">0</div>
+    <div class="lbl">📍 الكل</div>
+  </div>
+</div>
+
+<div id="adding-hint">📍 اضغط على الخريطة لتحديد موقع المتجر</div>
+
+<div id="fab-group">
+  <button class="fab main" onclick="startAddStore()" id="fab-add" title="إضافة متجر">➕</button>
+  <button class="fab loc" onclick="goToMyLocation()" title="موقعي">📍</button>
+  <button class="fab filter" onclick="openPanel('stores')" title="قائمة المتاجر">📋</button>
+</div>
+
+<div id="overlay" onclick="closePanel()"></div>
+
+<div id="bottom-panel">
+  <div class="panel-handle"></div>
+  <div class="panel-header">
+    <div class="panel-title" id="panel-title">اللوحة</div>
+    <button class="panel-close" onclick="closePanel()">✕</button>
+  </div>
+  <div id="panel-body" class="panel-content"></div>
+</div>
+
+<div id="toast"></div>
+
+<div id="confirm-dialog">
+  <div class="confirm-box">
+    <div class="confirm-icon" id="confirm-icon">⚠️</div>
+    <div class="confirm-title" id="confirm-title">تأكيد</div>
+    <div class="confirm-msg" id="confirm-msg">هل أنت متأكد؟</div>
+    <div class="confirm-btns">
+      <button class="btn btn-ghost" onclick="closeConfirm()">إلغاء</button>
+      <button class="btn btn-danger" id="confirm-ok">تأكيد</button>
+    </div>
+  </div>
+</div>
+
+<div id="version-badge">v2.0.0</div>
+
+<script>
+// ===========================
+//  نظام التحديث القسري - الأهم
+// ===========================
+(async function forceUpdateAndClearCache() {
+  console.log('🚀 بدء عملية التحديث القسري...');
+  
+  // 1. حذف جميع الـ Caches القديمة
+  if ('caches' in window) {
+    try {
+      const cacheNames = await caches.keys();
+      for (const name of cacheNames) {
+        if (name !== 'eggtrack-v2') {
+          await caches.delete(name);
+          console.log('✅ تم حذف الكاش القديم:', name);
+        }
+      }
+    } catch(e) { console.error('خطأ في حذف الكاش:', e); }
+  }
+  
+  // 2. تحديث Service Worker
+  if ('serviceWorker' in navigator) {
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const registration of registrations) {
+        await registration.update();
+        console.log('✅ تم تحديث Service Worker');
+      }
+    } catch(e) { console.error('خطأ في تحديث SW:', e); }
+  }
+  
+  // 3. إزالة أي بيانات localStorage قديمة قد تتعارض
+  // (الحفاظ على بيانات المستخدم فقط)
+  
+  console.log('✅ اكتملت عملية التحديث');
+})();
+
+// ===========================
+//  SERVICE WORKER
+// ===========================
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js')
+    .then(registration => {
+      console.log('✅ Service Worker مسجل بنجاح:', registration.scope);
+      
+      // التحقق من وجود تحديث
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        console.log('🔄 تم العثور على تحديث لـ Service Worker');
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            console.log('✅ تحديث جديد متاح، قم بتحديث الصفحة');
+            showToast('🔄 تحديث جديد متاح، سيتم تحديث التطبيق');
+            setTimeout(() => window.location.reload(), 1500);
+          }
+        });
+      });
+    })
+    .catch(err => console.log('⚠️ فشل تسجيل Service Worker', err));
+  
+  // الاستماع لرسائل من Service Worker
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data.type === 'ONLINE_STATUS') {
+      console.log('📡 حالة الاتصال:', event.data.online ? 'متصل' : 'غير متصل');
+    }
+  });
+}
+
+// ===========================
+//  طبقة البيانات
+// ===========================
+const DB = {
+  load() {
+    try { return JSON.parse(localStorage.getItem('eggtrack_stores') || '[]'); }
+    catch { return []; }
+  },
+  save(stores) { localStorage.setItem('eggtrack_stores', JSON.stringify(stores)); },
+  getSettings() {
+    try { return JSON.parse(localStorage.getItem('eggtrack_settings') || '{"currency":"دج","unit":"طبق"}'); }
+    catch { return {currency:'دج',unit:'طبق'}; }
+  },
+  saveSettings(s) { localStorage.setItem('eggtrack_settings', JSON.stringify(s)); }
+};
+
+let stores = DB.load();
+let settings = DB.getSettings();
+let map, myMarker, addingMode = false, editingId = null;
+let currentFilter = 'all';
+let userLat = null, userLng = null;
+let activeStoreId = null;
+
+// ===========================
+//  دوال الحالة
+// ===========================
+function getStatus(store) {
+  if (!store.lastSaleDate) return 'red';
+  const today = new Date(); today.setHours(0,0,0,0);
+  const last = new Date(store.lastSaleDate); last.setHours(0,0,0,0);
+  const days = Math.floor((today - last) / 86400000);
+  const shelf = store.shelfLifeDays || 3;
+  if (days === 0) return 'green';
+  if (days < shelf) return 'yellow';
+  return 'red';
+}
+
+function getStatusColor(s) {
+  return {green:'#2ecc71', yellow:'#f39c12', red:'#e74c3c'}[s] || '#e74c3c';
+}
+
+function getStatusLabel(s) {
+  return {green:'تم اليوم ✅', yellow:'يقترب ⚠️', red:'يحتاج زيارة 🔴'}[s] || '—';
+}
+
+function getDaysSince(store) {
+  if (!store.lastSaleDate) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const last = new Date(store.lastSaleDate); last.setHours(0,0,0,0);
+  return Math.floor((today - last) / 86400000);
+}
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+// ===========================
+//  تهيئة الخريطة
+// ===========================
+function initMap() {
+  map = L.map('map', {
+    center: [34.6728, 3.2630],
+    zoom: 12,
+    zoomControl: false,
+    attributionControl: true
+  });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19
+  }).addTo(map);
+
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  map.on('click', (e) => {
+    if (addingMode) {
+      stopAddMode();
+      openAddStoreForm(e.latlng.lat, e.latlng.lng);
+    }
+  });
+
+  renderMarkers();
+  updateStats();
+  tryGetLocation();
+
+  document.getElementById('map-loader').style.opacity = '0';
+  setTimeout(() => document.getElementById('map-loader').remove(), 500);
+}
+
+// ===========================
+//  العلامات
+// ===========================
+let markers = {};
+
+function renderMarkers() {
+  Object.values(markers).forEach(m => map.removeLayer(m));
+  markers = {};
+  stores.forEach(store => {
+    if (currentFilter !== 'all' && getStatus(store) !== currentFilter) return;
+    addMarker(store);
+  });
+}
+
+function addMarker(store) {
+  const status = getStatus(store);
+  const color = getStatusColor(status);
+  const el = document.createElement('div');
+  el.style.cssText = 'position:relative;width:34px;height:34px;';
+  el.innerHTML = `
+    <div style="position:absolute;top:-4px;left:-4px;width:42px;height:42px;border-radius:50%;background:${color};animation:pulse 2s infinite;opacity:0.3;"></div>
+    <div style="width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${color};display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,0.6);box-shadow:0 4px 12px rgba(0,0,0,0.2);">
+      <span style="transform:rotate(45deg);font-size:14px;">🥚</span>
+    </div>
+  `;
+  const icon = L.divIcon({ html: el.outerHTML, className: '', iconSize: [34,34], iconAnchor: [17,34] });
+  const m = L.marker([store.lat, store.lng], { icon }).addTo(map).on('click', () => showStorePopup(store.id));
+  markers[store.id] = m;
+}
+
+function refreshMarker(storeId) {
+  const store = stores.find(s => s.id === storeId);
+  if (!store) return;
+  if (markers[storeId]) map.removeLayer(markers[storeId]);
+  delete markers[storeId];
+  if (currentFilter === 'all' || getStatus(store) === currentFilter) addMarker(store);
+}
+
+// ===========================
+//  النافذة المنبثقة
+// ===========================
+function showStorePopup(id) {
+  const store = stores.find(s => s.id === id);
+  if (!store) return;
+  activeStoreId = id;
+  const status = getStatus(store);
+  const color = getStatusColor(status);
+  const days = getDaysSince(store);
+  const totalSales = (store.sales || []).reduce((a,s) => a + (s.total || 0), 0);
+
+  const html = `
+    <div class="popup-card">
+      <div class="popup-header">
+        <div class="popup-dot" style="background:${color};box-shadow:0 0 8px ${color};"></div>
+        <div class="popup-name">${store.name}</div>
+        <div class="popup-status" style="background:${color}22;color:${color};">${getStatusLabel(status)}</div>
+      </div>
+      <div class="popup-info">
+        👤 صاحب المتجر: <span>${store.owner || '—'}</span><br>
+        📞 الهاتف: <span>${store.phone || '—'}</span><br>
+        📅 آخر بيع: <span>${store.lastSaleDate ? formatDate(store.lastSaleDate) + (days !== null ? ` (منذ ${days} يوم)` : '') : 'لا يوجد'}</span><br>
+        💰 إجمالي المبيعات: <span>${totalSales.toLocaleString()} ${settings.currency}</span><br>
+        🔄 دورة التزويد الحالية: <span>${store.shelfLifeDays ? store.shelfLifeDays + ' أيام' : 'لم تُحدَّد بعد'}</span>
+        ${store.notes ? `<br>📝 <span>${store.notes}</span>` : ''}
+      </div>
+      <div class="popup-actions">
+        <button class="pop-btn sell" onclick="openSaleForm('${id}')">🧾 تسجيل بيع</button>
+        ${store.phone ? `<button class="pop-btn call" onclick="callStore('${store.phone}')">📞 اتصال</button>` : ''}
+        <button class="pop-btn hist" onclick="openStoreHistory('${id}')">📋 السجل</button>
+        <button class="pop-btn edit" onclick="openEditStore('${id}')">✏️ تعديل</button>
+        <button class="pop-btn del" onclick="confirmDelete('${id}')">🗑️ حذف</button>
+      </div>
+    </div>
+  `;
+
+  if (markers[id]) {
+    markers[id].bindPopup(html, { maxWidth: 280, minWidth: 260 }).openPopup();
+    map.setView([store.lat, store.lng], Math.max(map.getZoom(), 15), { animate: true });
+  }
+}
+
+function callStore(phone) { window.location.href = `tel:${phone}`; }
+
+// ===========================
+//  إضافة متجر
+// ===========================
+function startAddStore() {
+  addingMode = true;
+  document.getElementById('adding-hint').classList.add('show');
+  document.getElementById('fab-add').textContent = '❌';
+  document.getElementById('fab-add').onclick = cancelAddMode;
+  showToast('📍 اضغط على الخريطة لتحديد موقع المتجر');
+}
+function cancelAddMode() { stopAddMode(); }
+function stopAddMode() {
+  addingMode = false;
+  document.getElementById('adding-hint').classList.remove('show');
+  document.getElementById('fab-add').textContent = '➕';
+  document.getElementById('fab-add').onclick = startAddStore;
+}
+
+function openAddStoreForm(lat, lng) {
+  editingId = null;
+  openPanel('add-store');
+  document.getElementById('panel-title').textContent = 'إضافة متجر جديد';
+  document.getElementById('panel-body').innerHTML = buildStoreForm(null, lat, lng);
+}
+
+function openEditStore(id) {
+  const store = stores.find(s => s.id === id);
+  if (!store) return;
+  editingId = id;
+  map.closePopup();
+  openPanel('add-store');
+  document.getElementById('panel-title').textContent = 'تعديل المتجر';
+  document.getElementById('panel-body').innerHTML = buildStoreForm(store, store.lat, store.lng);
+}
+
+function buildStoreForm(store, lat, lng) {
+  return `
+    <div class="form-group">
+      <label class="form-label">🏪 اسم المتجر *</label>
+      <input class="form-input" id="f-name" type="text" placeholder="مثال: متجر أبو أحمد" value="${store?.name || ''}">
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">👤 اسم الصاحب</label><input class="form-input" id="f-owner" type="text" value="${store?.owner || ''}"></div>
+      <div class="form-group"><label class="form-label">📞 رقم الهاتف</label><input class="form-input" id="f-phone" type="tel" value="${store?.phone || ''}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">📝 ملاحظات</label><input class="form-input" id="f-notes" value="${store?.notes || ''}"></div>
+    <div class="form-group">
+      <label class="form-label">📍 الموقع</label>
+      <input type="hidden" id="f-lat" value="${lat}"><input type="hidden" id="f-lng" value="${lng}">
+      <div style="background:var(--surface2);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--text2);">🗺️ <span style="color:var(--accent)">${lat.toFixed(5)}, ${lng.toFixed(5)}</span></div>
+    </div>
+    <button class="btn btn-primary" onclick="saveStore()">💾 حفظ المتجر</button>
+  `;
+}
+
+function saveStore() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { showToast('❗ أدخل اسم المتجر'); return; }
+  const lat = parseFloat(document.getElementById('f-lat').value);
+  const lng = parseFloat(document.getElementById('f-lng').value);
+
+  if (editingId) {
+    const idx = stores.findIndex(s => s.id === editingId);
+    if (idx >= 0) stores[idx] = { ...stores[idx], name, owner: document.getElementById('f-owner').value.trim(), phone: document.getElementById('f-phone').value.trim(), notes: document.getElementById('f-notes').value.trim() };
+    showToast('✅ تم تحديث المتجر');
+  } else {
+    stores.push({ id: uid(), name, owner: document.getElementById('f-owner').value.trim(), phone: document.getElementById('f-phone').value.trim(), notes: document.getElementById('f-notes').value.trim(), lat, lng, lastSaleDate: null, sales: [] });
+    showToast('✅ تم إضافة المتجر');
+  }
+  DB.save(stores);
+  renderMarkers();
+  updateStats();
+  closePanel();
+}
+
+// ===========================
+//  نموذج البيع
+// ===========================
+function openSaleForm(id) {
+  const store = stores.find(s => s.id === id);
+  if (!store) return;
+  map.closePopup();
+  activeStoreId = id;
+  openPanel('sale');
+  document.getElementById('panel-title').textContent = `تسجيل بيع - ${store.name}`;
+  document.getElementById('panel-body').innerHTML = buildSaleForm(store);
+  const shelfOptionsContainer = document.getElementById('sale-shelf-opts');
+  if (shelfOptionsContainer) initSaleShelfOpts();
+  const dateInput = document.getElementById('s-date');
+  if (dateInput) dateInput.addEventListener('change', updateNextVisitHint);
+}
+
+function buildSaleForm(store) {
+  const today = new Date().toISOString().split('T')[0];
+  const lastShelf = (store.sales && store.sales.length > 0 && store.sales[0].shelfLifeDays) ? store.sales[0].shelfLifeDays : 3;
+  const shelfOptions = [
+    {days:1, label:'يوم'},
+    {days:2, label:'يومان'},
+    {days:3, label:'3 أيام'},
+    {days:4, label:'4 أيام'},
+    {days:5, label:'5 أيام'},
+    {days:7, label:'أسبوع'},
+    {days:10, label:'10 أيام'},
+    {days:14, label:'أسبوعان'},
+    {days:21, label:'3 أسابيع'},
+    {days:30, label:'شهر'},
+  ];
+  return `
+    <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;">
+      🏪 <strong>${store.name}</strong> | <span style="color:${getStatusColor(getStatus(store))}">${getStatusLabel(getStatus(store))}</span>
+    </div>
+    <div class="form-row"><div class="form-group"><label class="form-label">📅 التاريخ</label><input class="form-input" id="s-date" type="date" value="${today}"></div></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">📦 الكمية (${settings.unit})</label><input class="form-input" id="s-qty" type="number" min="1" oninput="calcTotal()"></div>
+      <div class="form-group"><label class="form-label">💵 السعر / ${settings.unit}</label><input class="form-input" id="s-price" type="number" min="0" step="0.5" oninput="calcTotal()"></div>
+    </div>
+    <div class="total-display"><div class="label">الإجمالي</div><div class="amount" id="s-total">0 ${settings.currency}</div></div>
+    <div class="form-group">
+      <label class="form-label">🔄 الزيارة القادمة — متى ستنتهي هذه الكمية؟</label>
+      <div class="shelf-options" id="sale-shelf-opts">
+        ${shelfOptions.map(o => `<div class="shelf-opt${o.days === lastShelf ? ' selected' : ''}" data-days="${o.days}">${o.label}</div>`).join('')}
+      </div>
+      <div id="next-visit-hint" style="margin-top:8px;padding:8px 12px;background:rgba(245,166,35,0.08);border-radius:10px;font-size:12px;color:var(--text2);text-align:center;"></div>
+    </div>
+    <div class="form-group"><label class="form-label">📝 ملاحظات</label><input class="form-input" id="s-notes"></div>
+    <button class="btn btn-primary" onclick="saveSale()">💾 حفظ عملية البيع</button>
+  `;
+}
+
+function calcTotal() {
+  const qty = parseFloat(document.getElementById('s-qty')?.value) || 0;
+  const price = parseFloat(document.getElementById('s-price')?.value) || 0;
+  const el = document.getElementById('s-total');
+  if (el) el.textContent = (qty * price).toLocaleString() + ' ' + settings.currency;
+}
+
+function initSaleShelfOpts() {
+  document.querySelectorAll('#sale-shelf-opts .shelf-opt').forEach(el => {
+    el.onclick = function() {
+      document.querySelectorAll('#sale-shelf-opts .shelf-opt').forEach(x => x.classList.remove('selected'));
+      this.classList.add('selected');
+      updateNextVisitHint();
+    };
+  });
+  updateNextVisitHint();
+}
+
+function updateNextVisitHint() {
+  const selected = document.querySelector('#sale-shelf-opts .shelf-opt.selected');
+  const hint = document.getElementById('next-visit-hint');
+  const dateEl = document.getElementById('s-date');
+  if (!selected || !hint || !dateEl) return;
+  const days = parseInt(selected.dataset.days);
+  const saleDate = dateEl.value ? new Date(dateEl.value) : new Date();
+  const nextDate = new Date(saleDate);
+  nextDate.setDate(nextDate.getDate() + days);
+  hint.textContent = `📅 الزيارة القادمة: ${nextDate.toLocaleDateString('ar-DZ')}`;
+}
+
+function saveSale() {
+  const qty = parseFloat(document.getElementById('s-qty').value);
+  const price = parseFloat(document.getElementById('s-price').value);
+  const date = document.getElementById('s-date').value;
+  if (!qty || qty <= 0) { showToast('❗ أدخل الكمية'); return; }
+  if (!price || price <= 0) { showToast('❗ أدخل السعر'); return; }
+  const shelfEl = document.querySelector('#sale-shelf-opts .shelf-opt.selected');
+  const shelfDays = shelfEl ? parseInt(shelfEl.dataset.days) : 3;
+  const idx = stores.findIndex(s => s.id === activeStoreId);
+  if (idx < 0) return;
+  stores[idx].sales = stores[idx].sales || [];
+  stores[idx].sales.unshift({ id: uid(), date, qty, price, total: qty * price, shelfLifeDays: shelfDays, notes: document.getElementById('s-notes').value.trim() });
+  stores[idx].lastSaleDate = date;
+  stores[idx].shelfLifeDays = shelfDays;
+  DB.save(stores);
+  refreshMarker(activeStoreId);
+  updateStats();
+  closePanel();
+  showToast(`✅ تم تسجيل البيع · الزيارة القادمة خلال ${shelfDays} يوم`);
+}
+
+// ===========================
+//  السجلات والتقارير والإعدادات
+// ===========================
+function openStoreHistory(id) {
+  const store = stores.find(s => s.id === id);
+  if (!store) return;
+  map.closePopup();
+  openPanel('history');
+  document.getElementById('panel-title').textContent = `سجل المبيعات - ${store.name}`;
+  const sales = store.sales || [];
+  const total = sales.reduce((a, s) => a + s.total, 0);
+  let html = `<div class="report-card"><div class="report-title">إجمالي المبيعات</div><div class="report-value">${total.toLocaleString()} ${settings.currency}</div><div class="report-sub">${sales.length} عملية</div></div>`;
+  if (sales.length === 0) html += `<div style="text-align:center;padding:40px;">📭 لا توجد مبيعات</div>`;
+  else sales.forEach(s => { html += `<div class="sale-item"><div class="sale-item-header"><div class="sale-date">📅 ${formatDate(s.date)}</div><div class="sale-total">${s.total.toLocaleString()} ${settings.currency}</div></div><div class="sale-detail">📦 ${s.qty} ${settings.unit} × ${s.price} ${settings.currency}</div>${s.shelfLifeDays ? `<div class="sale-detail">🔄 دورة التزويد: <span>${s.shelfLifeDays} يوم</span></div>` : ''}${s.notes ? `<div class="sale-detail">📝 <span>${s.notes}</span></div>` : ''}</div>`; });
+  document.getElementById('panel-body').innerHTML = html;
+}
+
+function openPanel(type) {
+  const panel = document.getElementById('bottom-panel');
+  document.getElementById('overlay').classList.add('show');
+  panel.classList.add('open');
+  document.getElementById('panel-body').innerHTML = '';
+  if (type === 'stores') { document.getElementById('panel-title').textContent = 'قائمة المتاجر'; renderStoreList(); }
+  else if (type === 'reports') { document.getElementById('panel-title').textContent = '📊 التقارير والإحصاءات'; renderReports(); }
+  else if (type === 'settings') { document.getElementById('panel-title').textContent = '⚙️ الإعدادات'; renderSettings(); }
+  else if (type === 'add-store') { /* handled elsewhere */ }
+  else if (type === 'sale') { /* handled elsewhere */ }
+  else if (type === 'history') { /* handled elsewhere */ }
+}
+function closePanel() {
+  document.getElementById('bottom-panel').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+let storeFilter = 'all';
+
+function renderStoreList(search = '') {
+  const body = document.getElementById('panel-body');
+  if (!document.getElementById('store-search')) {
+    body.innerHTML = `
+      <input class="form-input" id="store-search" placeholder="🔍 بحث بالاسم أو الهاتف أو الصاحب..." autocomplete="off" style="margin-bottom:12px;">
+      <div class="filter-chips" id="store-filter-chips"></div>
+      <div id="store-list-results"></div>`;
+    document.getElementById('store-search').addEventListener('input', function() {
+      updateStoreResults(this.value);
+    });
+    document.getElementById('store-search').value = search;
+  }
+  document.getElementById('store-filter-chips').innerHTML = `
+    <div class="chip ${storeFilter==='all'?'active':''}" onclick="setStoreFilter('all')">الكل (${stores.length})</div>
+    <div class="chip ${storeFilter==='red'?'active':''}" onclick="setStoreFilter('red')">🔴 يحتاج (${stores.filter(s=>getStatus(s)==='red').length})</div>
+    <div class="chip ${storeFilter==='yellow'?'active':''}" onclick="setStoreFilter('yellow')">⚠️ قريبًا (${stores.filter(s=>getStatus(s)==='yellow').length})</div>
+    <div class="chip ${storeFilter==='green'?'active':''}" onclick="setStoreFilter('green')">✅ اليوم (${stores.filter(s=>getStatus(s)==='green').length})</div>`;
+  updateStoreResults(search);
+}
+
+function updateStoreResults(search = '') {
+  const input = document.getElementById('store-search');
+  const val = search !== undefined ? search : (input ? input.value : '');
+  let filtered = stores.filter(s =>
+    (storeFilter === 'all' || getStatus(s) === storeFilter) &&
+    (!val || s.name.includes(val) || (s.phone||'').includes(val) || (s.owner||'').includes(val))
+  );
+  filtered.sort((a,b) => ({red:0,yellow:1,green:2}[getStatus(a)] - {red:0,yellow:1,green:2}[getStatus(b)]));
+  const resultsEl = document.getElementById('store-list-results');
+  if (!resultsEl) return;
+  if (filtered.length === 0) {
+    resultsEl.innerHTML = `<div style="text-align:center;padding:40px;">🏪 لا توجد متاجر</div>`;
+  } else {
+    resultsEl.innerHTML = filtered.map(s => {
+      const status = getStatus(s);
+      return `<div class="store-item" onclick="goToStore('${s.id}')">
+        <div class="store-dot" style="background:${getStatusColor(status)};"></div>
+        <div class="store-info">
+          <div class="store-name">${s.name}</div>
+          <div class="store-sub">${s.owner?'👤 '+s.owner+' | ':''}${getDaysSince(s)!==null?`📅 منذ ${getDaysSince(s)} يوم`:'📅 لم يُزر'}</div>
+        </div>
+        <div class="store-arrow">›</div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function setStoreFilter(f) {
+  storeFilter = f;
+  document.getElementById('store-filter-chips').innerHTML = `
+    <div class="chip ${storeFilter==='all'?'active':''}" onclick="setStoreFilter('all')">الكل (${stores.length})</div>
+    <div class="chip ${storeFilter==='red'?'active':''}" onclick="setStoreFilter('red')">🔴 يحتاج (${stores.filter(s=>getStatus(s)==='red').length})</div>
+    <div class="chip ${storeFilter==='yellow'?'active':''}" onclick="setStoreFilter('yellow')">⚠️ قريبًا (${stores.filter(s=>getStatus(s)==='yellow').length})</div>
+    <div class="chip ${storeFilter==='green'?'active':''}" onclick="setStoreFilter('green')">✅ اليوم (${stores.filter(s=>getStatus(s)==='green').length})</div>`;
+  updateStoreResults();
+}
+
+function goToStore(id) { closePanel(); const s = stores.find(s=>s.id===id); if(s) { map.setView([s.lat, s.lng], 16); setTimeout(()=>showStorePopup(id),400); } }
+
+function renderReports() {
+  const today = new Date().toISOString().split('T')[0];
+  const weekAgo = new Date(Date.now() - 7*86400000).toISOString().split('T')[0];
+  const monthAgo = new Date(Date.now() - 30*86400000).toISOString().split('T')[0];
+  let allSales = []; stores.forEach(s => (s.sales||[]).forEach(sale => allSales.push({...sale, storeName: s.name})));
+  const sum = arr => arr.reduce((a,s)=>a+s.total,0);
+  const redCount = stores.filter(s => getStatus(s) === 'red').length;
+  const yellowCount = stores.filter(s => getStatus(s) === 'yellow').length;
+  const greenCount = stores.filter(s => getStatus(s) === 'green').length;
+  let html = `<div class="report-grid">
+    <div class="report-card"><div class="report-title">💰 اليوم</div><div class="report-value">${sum(allSales.filter(s=>s.date===today)).toLocaleString()} ${settings.currency}</div></div>
+    <div class="report-card"><div class="report-title">📅 الأسبوع</div><div class="report-value">${sum(allSales.filter(s=>s.date>=weekAgo)).toLocaleString()} ${settings.currency}</div></div>
+    <div class="report-card"><div class="report-title">🗓️ الشهر</div><div class="report-value">${sum(allSales.filter(s=>s.date>=monthAgo)).toLocaleString()} ${settings.currency}</div></div>
+    <div class="report-card"><div class="report-title">📦 الإجمالي</div><div class="report-value">${sum(allSales).toLocaleString()} ${settings.currency}</div></div>
+  </div>
+  <div class="report-card">
+    <div class="report-title">🏪 حالة المتاجر</div>
+    <div style="display:flex;gap:16px;margin-top:12px;">
+      <div><span style="color:var(--green);font-weight:900;">✅ ${greenCount}</span><br><span style="font-size:11px;">تم اليوم</span></div>
+      <div><span style="color:var(--yellow);font-weight:900;">⚠️ ${yellowCount}</span><br><span style="font-size:11px;">يقترب</span></div>
+      <div><span style="color:var(--red);font-weight:900;">🔴 ${redCount}</span><br><span style="font-size:11px;">يحتاج</span></div>
+    </div>
+  </div>`;
+  document.getElementById('panel-body').innerHTML = html;
+}
+
+function renderSettings() {
+  const s = settings;
+  let html = `
+    <div class="form-group"><label class="form-label">💵 العملة</label><input class="form-input" id="set-currency" value="${s.currency}"></div>
+    <div class="form-group"><label class="form-label">📦 وحدة القياس</label><input class="form-input" id="set-unit" value="${s.unit}"></div>
+    <button class="btn btn-primary" onclick="saveSettings()">💾 حفظ</button>
+    <div class="sep"></div>
+    <div class="backup-area" onclick="exportData()"><div class="backup-icon">📤</div><div class="backup-title">تصدير البيانات</div><div class="backup-sub">حفظ نسخة احتياطية</div></div>
+    <div class="backup-area" onclick="document.getElementById('import-file').click()"><div class="backup-icon">📥</div><div class="backup-title">استيراد البيانات</div><div class="backup-sub">استعادة من نسخة</div></div>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+    <div class="sep"></div>
+    <button class="btn btn-danger" onclick="confirmClearAll()">🗑️ مسح جميع البيانات</button>
+    <button class="btn btn-primary" style="margin-top:16px;" onclick="downloadVisibleTiles()">🗺️ تحميل خريطة المنطقة الحالية</button>
+    <div class="sep"></div>
+    <button class="btn btn-ghost" onclick="forceReload()">🔄 تحديث التطبيق قسرياً</button>
+    <div style="margin-top:20px;text-align:center;font-size:11px;color:var(--text2);">EggTrack Pro v2.0 · الجلفة</div>
+  `;
+  document.getElementById('panel-body').innerHTML = html;
+}
+
+function saveSettings() {
+  settings.currency = document.getElementById('set-currency').value.trim() || 'دج';
+  settings.unit = document.getElementById('set-unit').value.trim() || 'طبق';
+  DB.saveSettings(settings);
+  showToast('✅ تم حفظ الإعدادات');
+}
+
+function exportData() {
+  const data = JSON.stringify(stores, null, 2);
+  const blob = new Blob([data], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `eggtrack_backup_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ تم تصدير البيانات');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (Array.isArray(imported)) {
+        stores = imported;
+        DB.save(stores);
+        renderMarkers();
+        updateStats();
+        showToast('✅ تم استيراد البيانات بنجاح');
+        closePanel();
+      } else {
+        showToast('❌ ملف غير صالح');
+      }
+    } catch(err) {
+      showToast('❌ خطأ في قراءة الملف');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function confirmClearAll() {
+  showConfirm('⚠️ تحذير', 'سيتم حذف جميع المتاجر والبيانات نهائياً!', () => {
+    stores = [];
+    DB.save(stores);
+    renderMarkers();
+    updateStats();
+    closePanel();
+    showToast('✅ تم مسح جميع البيانات');
+  });
+}
+
+function forceReload() {
+  showToast('🔄 جاري تحديث التطبيق...');
+  setTimeout(() => {
+    window.location.reload(true);
+  }, 500);
+}
+
+function downloadVisibleTiles() {
+  const bounds = map.getBounds();
+  const minZoom = Math.max(map.getZoom() - 2, 10);
+  const maxZoom = Math.min(map.getZoom() + 1, 16);
+  let total = 0, done = 0;
+  showToast('⏳ جاري تجهيز التجانبات...');
+  for (let z = minZoom; z <= maxZoom; z++) {
+    const topLeft = map.project(bounds.getNorthWest(), z);
+    const bottomRight = map.project(bounds.getSouthEast(), z);
+    const minX = Math.floor(topLeft.x / 256), maxX = Math.floor(bottomRight.x / 256);
+    const minY = Math.floor(topLeft.y / 256), maxY = Math.floor(bottomRight.y / 256);
+    for (let x = minX; x <= maxX; x++) {
+      for (let y = minY; y <= maxY; y++) {
+        const url = `https://a.tile.openstreetmap.org/${z}/${x}/${y}.png`;
+        total++;
+        fetch(url, { cache: 'force-cache', mode: 'no-cors' }).catch(() => {});
+      }
+    }
+  }
+  if (total) showToast(`📦 جاري تنزيل ${total} تجانبة...`);
+  else showToast('⚠️ لا توجد تجانبات');
+}
+
+// ===========================
+//  بحث الخريطة
+// ===========================
+let mapSearchTimeout = null;
+let mapSearchMarker = null;
+
+function toggleMapSearch() {
+  const container = document.getElementById('map-search-container');
+  const isActive = container.classList.contains('active');
+  if (isActive) {
+    closeMapSearch();
+  } else {
+    container.classList.add('active');
+    document.getElementById('map-search-btn').style.background = 'var(--accent)';
+    document.getElementById('map-search-btn').style.color = 'white';
+    document.getElementById('statsbar').style.top = '130px';
+    setTimeout(() => document.getElementById('map-search-input').focus(), 100);
+  }
+}
+
+function closeMapSearch() {
+  document.getElementById('map-search-container').classList.remove('active');
+  document.getElementById('map-search-btn').style.background = '';
+  document.getElementById('map-search-btn').style.color = '';
+  document.getElementById('statsbar').style.top = '68px';
+  document.getElementById('map-search-results').classList.remove('show');
+  document.getElementById('map-search-results').innerHTML = '';
+  document.getElementById('map-search-input').value = '';
+  document.getElementById('map-search-clear').classList.remove('show');
+  if (mapSearchMarker) { map.removeLayer(mapSearchMarker); mapSearchMarker = null; }
+}
+
+function clearMapSearch() {
+  document.getElementById('map-search-input').value = '';
+  document.getElementById('map-search-clear').classList.remove('show');
+  document.getElementById('map-search-results').classList.remove('show');
+  document.getElementById('map-search-results').innerHTML = '';
+  if (mapSearchMarker) { map.removeLayer(mapSearchMarker); mapSearchMarker = null; }
+  document.getElementById('map-search-input').focus();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('map-search-input');
+  if (input) {
+    input.addEventListener('input', function() {
+      const val = this.value.trim();
+      document.getElementById('map-search-clear').classList.toggle('show', val.length > 0);
+      clearTimeout(mapSearchTimeout);
+      if (val.length < 2) {
+        document.getElementById('map-search-results').classList.remove('show');
+        return;
+      }
+      mapSearchTimeout = setTimeout(() => searchPlaces(val), 500);
+    });
+    input.addEventListener('keydown', e => { if (e.key === 'Escape') closeMapSearch(); });
+  }
+});
+
+async function searchPlaces(query) {
+  const resultsEl = document.getElementById('map-search-results');
+  resultsEl.innerHTML = '<div class="map-result-loading">⏳ جاري البحث...</div>';
+  resultsEl.classList.add('show');
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ' الجلفة الجزائر')}&format=json&limit=6&accept-language=ar&countrycodes=dz`;
+    const r = await fetch(url, { headers: { 'Accept-Language': 'ar' } });
+    let data = await r.json();
+    if (!data.length) {
+      const r2 = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=6&accept-language=ar`, { headers: { 'Accept-Language': 'ar' } });
+      data = await r2.json();
+    }
+    if (!data.length) {
+      resultsEl.innerHTML = '<div class="map-result-empty">🔍 لم يُعثر على نتائج</div>';
+      return;
+    }
+    resultsEl.innerHTML = data.map((item) => {
+      const icon = getPlaceIcon(item.type, item.class);
+      const name = item.display_name.split(',')[0];
+      const addr = item.display_name.split(',').slice(1, 4).join(',').trim();
+      return `<div class="map-result-item" onclick="goToPlace(${item.lat}, ${item.lon}, '${name.replace(/'/g,"\\'")}')">
+        <span class="map-result-icon">${icon}</span>
+        <div class="map-result-info">
+          <div class="map-result-name">${name}</div>
+          <div class="map-result-addr">${addr}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (err) {
+    resultsEl.innerHTML = '<div class="map-result-empty">❌ تعذر الاتصال بالإنترنت</div>';
+  }
+}
+
+function getPlaceIcon(type, cls) {
+  if (cls === 'highway') return '🛣️';
+  if (type === 'mosque' || type === 'place_of_worship') return '🕌';
+  if (type === 'hospital' || type === 'clinic') return '🏥';
+  if (type === 'school' || type === 'university') return '🏫';
+  if (type === 'restaurant' || type === 'cafe') return '🍽️';
+  if (type === 'supermarket' || type === 'marketplace') return '🛒';
+  if (cls === 'place') return '📍';
+  if (cls === 'amenity') return '🏢';
+  return '📌';
+}
+
+function goToPlace(lat, lng, name) {
+  lat = parseFloat(lat); lng = parseFloat(lng);
+  closeMapSearch();
+  map.setView([lat, lng], 16, { animate: true });
+  if (mapSearchMarker) map.removeLayer(mapSearchMarker);
+  const el = document.createElement('div');
+  el.innerHTML = `<div style="background:var(--blue);color:white;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;box-shadow:0 4px 12px rgba(52,152,219,0.5);">📍 ${name}</div>`;
+  mapSearchMarker = L.marker([lat, lng], {
+    icon: L.divIcon({ html: el.innerHTML, className: '', iconAnchor: [60, 14] })
+  }).addTo(map);
+  setTimeout(() => { if (mapSearchMarker) { map.removeLayer(mapSearchMarker); mapSearchMarker = null; } }, 8000);
+}
+
+// ===========================
+//  دوال مساعدة
+// ===========================
+function updateStats() {
+  document.getElementById('stat-green').textContent = stores.filter(s=>getStatus(s)==='green').length;
+  document.getElementById('stat-yellow').textContent = stores.filter(s=>getStatus(s)==='yellow').length;
+  document.getElementById('stat-red').textContent = stores.filter(s=>getStatus(s)==='red').length;
+  document.getElementById('stat-total').textContent = stores.length;
+}
+function filterStores(f) { currentFilter = f; renderMarkers(); }
+function tryGetLocation() {
+  navigator.geolocation?.getCurrentPosition(p => { userLat = p.coords.latitude; userLng = p.coords.longitude; map.setView([userLat, userLng], 13); }, ()=>{});
+}
+function goToMyLocation() {
+  navigator.geolocation?.getCurrentPosition(p => { userLat = p.coords.latitude; userLng = p.coords.longitude; map.setView([userLat, userLng], 15); placeMyMarker(); }, ()=>showToast('❌ تعذر تحديد الموقع'));
+}
+function placeMyMarker() { if (myMarker) map.removeLayer(myMarker); const icon = L.divIcon({html:'<div style="position:relative;"><div style="position:absolute;top:-8px;left:-8px;width:24px;height:24px;border-radius:50%;background:#3498db;animation:pulse 1.5s infinite;opacity:0.4;"></div><div style="width:14px;height:14px;border-radius:50%;background:#3498db;border:3px solid white;"></div></div>', iconSize:[14,14]}); myMarker = L.marker([userLat, userLng], {icon}).addTo(map); }
+function formatDate(d) { return d ? new Date(d).toLocaleDateString('ar-DZ') : '—'; }
+function showToast(msg) { const el = document.getElementById('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(window.toastTimeout); window.toastTimeout = setTimeout(()=>el.classList.remove('show'), 3000); }
+let confirmCallback = null;
+function showConfirm(t,m,cb) { confirmCallback = cb; document.getElementById('confirm-title').textContent = t; document.getElementById('confirm-msg').textContent = m; document.getElementById('confirm-dialog').classList.add('show'); }
+function closeConfirm() { confirmCallback = null; document.getElementById('confirm-dialog').classList.remove('show'); }
+document.getElementById('confirm-ok').onclick = ()=>{ if(confirmCallback) confirmCallback(); closeConfirm(); };
+function confirmDelete(id) { const s = stores.find(s=>s.id===id); if(!s) return; map.closePopup(); showConfirm('🗑️ حذف المتجر', `حذف "${s.name}"؟`, ()=>{ if(markers[id]) map.removeLayer(markers[id]); stores = stores.filter(s=>s.id!==id); DB.save(stores); updateStats(); closePanel(); showToast('✅ تم الحذف'); }); }
+
+// ===========================
+//  بدء التشغيل
+// ===========================
+window.addEventListener('load', () => {
+  initMap();
+});
+</script>
+ <script>
+// إنشاء أيقونات وهمية مؤقتاً
+(function createFakeIcons() {
+  const icons = [
+    { size: 192, name: 'icon-192.png' },
+    { size: 512, name: 'icon-512.png' }
+  ];
+  
+  icons.forEach(icon => {
+    const canvas = document.createElement('canvas');
+    canvas.width = icon.size;
+    canvas.height = icon.size;
+    const ctx = canvas.getContext('2d');
+    
+    // خلفية
+    ctx.fillStyle = '#f5a623';
+    ctx.fillRect(0, 0, icon.size, icon.size);
+    
+    // رسم بيضة
+    ctx.fillStyle = 'white';
+    ctx.font = `bold ${icon.size * 0.5}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🥚', icon.size/2, icon.size/2);
+    
+    // تحويل canvas إلى PNG
+    canvas.toBlob(blob => {
+      const url = URL.createObjectURL(blob);
+      fetch(url).then(res => res.blob()).then(blob => {
+        // تخزين في Cache API
+        if ('caches' in window) {
+          caches.open('eggtrack-v2').then(cache => {
+            cache.put(icon.name, new Response(blob, {
+              headers: { 'Content-Type': 'image/png' }
+            }));
+          });
+        }
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>
